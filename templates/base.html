@@ -1,0 +1,88 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <title>EECS485</title>
+    <style type="text/css">
+    .no_underline{
+        text-decoration: none;
+    }
+    </style>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.js"></script>    
+</head>
+
+
+
+<body>
+{% if 'username' in session %}
+  <div class="center">
+    <table>
+      <tr>
+        <tb> <a href = "{{url_for('main.main_route')}}" id = "nav_home">Nav Home</a> </tb>
+        <tb> <a href = "{{url_for('user.user_edit_route')}}" id = "nav_edit">Edit Account</a> </tb>
+        <tb> <a href = "{{url_for('albums.albums_route')}}" id = "nav_albums">My Albums</a> </tb>
+        <tb> <button id = "nav_logout" onclick="logout_bt(); return false;">Logout</button></tb>
+      </tr>
+    </table>
+  </div>
+
+{% else %}
+  <div class="center">
+      <table>
+      <tr>
+        <tb> <p>Currently NOT logged in</p> </tb>
+        <tb> <button id = "nav_login" onclick="login_bt(); return false;">Direct Me to Login Page</button> </tb>
+      </tr>
+    </table> 
+  </div>
+{% endif %}
+
+{% block content %}{% endblock %}
+<div id = "error_display"></div>
+
+<script type="text/javascript">
+  "use strict"
+  function server_error_handler(error){
+      $("#error_display").empty();
+      var error_list  = JSON.parse(error.responseText).errors;
+      for(var i = 0; i < error_list.length; ++i){
+          var el = $("<p class = 'error'></p><br>");
+          el.text(error_list[i].message);
+          $("#error_display").append(el);
+      }
+  };
+
+  function client_error_handler(error_list){  
+    for(var i = 0; i < error_list.length; ++i){
+        var el = $("<p class = 'error'></p><br>");
+        el.text(error_list[i].message);
+        $("#error_display").append(el);
+    }
+  };
+
+  function logout_bt(){
+    $.ajax({
+        type: "GET",
+        url : "{{url_for('logout.logout_route')}}",
+        success: function(){ 
+          $.ajax({
+            type : "POST",
+            url : "{{url_for('logout.api_logout_route')}}",
+            success: function(){window.location.href = "{{url_for('main.main_route')}}"},
+            error: server_error_handler
+          });
+        },
+        error: function(){}
+    });
+  };
+
+  function login_bt(){
+    var new_url = "{{url_for('login.login_route')}}?url=/m8pl2dh7" + window.location.href.split('/m8pl2dh7')[1];
+    window.location.href = new_url;
+  }
+
+</script>
+
+</body>
+</html>
+

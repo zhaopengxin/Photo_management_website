@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script type="text/javascript">
+    function login(){
+        $.ajax({
+            type: "POST",
+            contentType: "application/json; charset=UTF-8",
+            data: JSON.stringify(
+                {   "username" : $("#login_username_input").val(), 
+                    "password" : $("#login_password_input").val()
+                }),
+            url: "{{url_for('login.api_login_route')}}",
+            success: function(data) {
+                var current_url = window.location.href;
+                if (current_url.indexOf('url=') != -1){ //previous url is provided
+                    previous_url = current_url.split('url=')[1];
+                    window.location.href = previous_url;
+                }else{
+                    window.location.href = "{{url_for('main.main_route')}}";
+                }
+            },
+            error: server_error_handler
+        });
+    };
+
+</script>
+
+<div>
+    <h4> Please login here </h4>
+    <form>
+        username: <input type = "text" name = "username" value = "" id = "login_username_input">
+        <br>
+        password: <input type = "password" name = "password" value = "" id = "login_password_input">
+        <br>
+        <button id = "login_submit" onclick = "login(); return false;"> Login</button>
+    </form>
+</div>
+
+{% endblock %}
+
+
+
+
+

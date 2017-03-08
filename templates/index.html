@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <title>GROUP 83</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    {% if login %}
+        <header>
+            <h2>Logged in as {{user.firstname}} {{user.lastname}}</h2>
+        </header>
+
+        <div>
+            <h4>These are accessible albums for you</h4>
+                <ul>
+                    {% for access_album in access_albums %}
+                        <li>
+                        <a href = "{{url_for('album.album_route', albumid = access_album.albumid)}}" id = "album_{{access_album.albumid}}_link">
+                            {{access_album.title}}
+                        </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+        </div>
+
+    {% else %}
+        <header>
+            <h2>Not logged in </h2>
+        </header>
+
+        <div>
+            <h1>This is a website to help user manage their albums</h1>
+            <a href = "{{url_for('user.user_route')}}" id = "home_user_create"> Sign Up </a>
+            <br>
+            <a href = "{{url_for('login.login_route')}}" id = "home_login"> Sign In </a>
+            <h4>Public Albums List</h4>
+                <ul>
+                    {% for public_album in public_albums %}
+                        <li>
+                        <a href = "{{url_for('album.album_route', albumid = public_album.albumid)}}" id = "album_{{public_album.albumid}}_link">
+                            {{public_album.title}}
+                        </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            <h4>All Registered Users</h4>
+                <ul>
+                    {% for user in users %}
+                        <li>
+                        <a href = "{{url_for('albums.albums_route', username = user.username)}}" id = "user_albums_{{user.username}}">
+                            {{user.username}}
+                        </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+        </div>
+    {% endif %}
+
+
+
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+
+    <footer>
+        <p>Created By Group 83</p>
+    </footer>
+
+{% endblock %}

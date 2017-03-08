@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+    {% if sensitive %}
+        <h3>Albums[sensitive] belongs to {{holdername}}</h3>
+    {% else %}
+        <h3>Albums[public] belongs to {{holdername}}</h3>
+        <p> Welcome {{username}} to {{holdername}}'s albums page</p>
+    {% endif %}
+
+
+
+    {% if not edit %}
+        <ul>
+        {%for album in album_list%}
+            <li>
+                <a href = "{{url_for('album.album_route', albumid = album.albumid)}}" id = "album_{{album.albumid}}_link">{{album.title}}</a>
+            </li>
+        {%endfor%}
+        </ul>
+
+        {% if sensitive %}
+            <form action  = "{{url_for('albums.albums_edit_route')}}">
+                <button type = "submit" id = "user_albums_edit_{{holdername}}"> Edit </button>
+            </form>
+        {% endif %}
+    {% else %}
+
+        <table>
+            <tr>
+                <td>Album Title</td><td>Edit</td><td>Delete</td>
+            </tr>
+
+            {% for album in album_list %}
+                <tr>
+                    <td>{{album.title}}</td>
+                    <td> 
+                        <form action = "{{url_for('album.album_edit_route')}}" method="GET" >
+                            <input type = "hidden" name = "albumid"  value = {{album.albumid}}>
+                            <button type = "submit" id = "album_edit_{{album.albumid}}_link"> Edit</button>
+                        </form>     
+                    <td>
+                        <form action="{{url_for('albums.albums_edit_route')}}" method = "POST">
+                            <input type = "hidden" name = "op" value = "delete">
+                            <input type = "hidden" name = "albumid" value = {{album.albumid}}>
+                            <button type = "submit"  id="delete_album_{{album.albumid}}"> Delete </button>
+                        </form>
+                    </td>
+                </tr>    
+            {% endfor %}
+
+            <tr>
+                <form action="{{url_for('albums.albums_edit_route')}}" method = "POST">
+                    <input type = "hidden" name = "op" value = "add">
+                    <td><input type = "text" name="title" value = "New:" id="album_add_name"></td>
+                    <td><button type = "submit" id="album_add_submit"> Add </button></td>
+                </form>        
+            </tr>
+                
+        </table>
+
+    {% endif %}
+
+{% endblock %}
+

@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script type="text/javascript">
+    // general error-checking function
+    "use strict"
+
+    var error_list = [];
+    function check_min_len(ss, ss_type, len){
+        if(ss.length < len){
+            error_list.push({"message" : ss_type + " must be at least " + len.toString() + " characters long"});
+        }
+    }
+
+    function check_max_len(ss, ss_type, len){
+        if(ss.length > len){
+            error_list.push({"message" : ss_type + " must be no longer than " + len.toString() + " characters"});
+        }
+    }    
+
+    function check_content(ss, ss_type){
+        var ss_list = ss.split('');
+        for(var i = 0; i < ss_list.length; ++i){
+            if(ss_list[i] >= '0' && ss_list[i] <= '9') {continue;}
+            else if (ss_list[i] >= 'a' && ss_list[i] <= 'z') {continue;}
+            else if (ss_list[i] >= 'A' && ss_list[i] <= 'Z') {continue;}
+            else if (ss_list[i] == '_') {continue;}
+            else{
+                error_list.push({"message" : ss_type + " may only contain letters, digits, and underscores"})
+                return;
+            }
+        }        
+    }
+
+    function check_password_element(password){
+        var digit = false;
+        var letter = false;
+        var pass_list = password.split('');
+        for(var i = 0; i < pass_list.length; ++i){
+            if(pass_list[i] >= '0' && pass_list[i] <= '9'){
+                digit = true;
+            }
+            else if(pass_list[i] >= 'a' && pass_list[i] <= 'z'){
+                letter = true;
+            }
+            else if(pass_list[i] >= 'A' && pass_list[i] <= 'Z'){
+                letter = true;
+            }
+        }
+        if (digit == false || letter == false){
+            error_list.push({"message" : "Passwords must contain at least one letter and one number"});
+        }
+    }
+
+    function check_passwords_match(password1, password2){
+        if(password1 != password2){
+            error_list.push({"message" : "Passwords do not match"});
+        }
+    }
+
+    function check_email_format(email){
+        var reg = new RegExp("[^@]+@[^@]+\.[^@]+");     
+        if (!reg.test(email)){           
+            error_list.push({"message": "Email address must be valid"});      
+        }   
+    }
+
+</script>
+
+
+{% if edit %}
+    <script type="text/javascript">
+    // javascript for user_edit_route
+    "use strict"
+
+        function read_success_handler(data){
+            $("#update_firstname_input").val(data.firstname);
+            $("#update_lastname_input").val(data.lastname);
+            $("#update_email_input").val(data.email);
+        };
+
+        $(document).ready(function(){
+            $.ajax({
+                type : "GET",
+                url: "{{url_for('user.api_user_route')}}",
+                success: read_success_handler,
+                error: server_error_handler
+            });
+        });
+
+        function update_user(){
+            //client-side check
+            $.ajax({
+                type : "GET",
+                url: "{{url_for('user.api_user_route')}}",
+                success: update_success_handler,
+                error: server_error_handler
+            });
+
+            function update_success_handler(data){
+                error_list = [];   
+                if ($("#update_password1_input").val().length != 0){        
+                    check_min_len($("#update_password1_input").val(), "Passwords", 8);
+                    check_password_element($("#update_password1_input").val());
+                    check_content($("#update_password1_input").val(), "Passwords");
+                    check_passwords_match($("#update_password1_input").val(), $("#update_password2_input").val());
+                }
+                check_email_format($("#update_email_input").val());
+                check_max_len($("#update_firstname_input").val(), "Firstname", 20);
+                check_max_len($("#update_lastname_input").val(), "Lastname", 20);
+                check_max_len($("#update_email_input").val(), "Email", 40);
+                if(error_list.length == 0){
+                    // no error happens
+                    $.ajax({
+                        type: "PUT",
+                        contentType: "application/json; charset=UTF-8",
+                        data: JSON.stringify(
+                            {   "username" : data.username, 
+                                "firstname" : $("#update_firstname_input").val(),
+                                "lastname" : $("#update_lastname_input").val(),
+                                "password1" : $("#update_password1_input").val(),
+                                "password2" : $("#update_password2_input").val(),
+                                "email" : $("#update_email_input").val()
+                            }),
+                        url: "{{url_for('user.api_user_route')}}",
+                        success: function() {},
+                        error: server_error_handler
+                    });
+                }else{
+                    //error happens
+                    client_error_handler(error_list);
+                }
+            };
+        };
+
+    </script>
+{% else %}
+    <script type="text/javascript">
+    //javascript for user_route
+    "use strict"
+
+        function create_user(){
+            //client-side check
+            error_list = [];
+            check_min_len($("#new_username_input").val(), "Usernames", 3);
+            check_content($("#new_username_input").val(), "Usernames");
+            check_min_len($("#new_password1_input").val(), "Passwords", 8);
+            check_password_element($("#new_password1_input").val());
+            check_content($("#new_password1_input").val(), "Passwords");
+            check_passwords_match($("#new_password1_input").val(), $("#new_password2_input").val());
+            check_email_format($("#new_email_input").val());
+            check_max_len($("#new_username_input").val(), "Username", 20);
+            check_max_len($("#new_firstname_input").val(), "Firstname", 20);
+            check_max_len($("#new_lastname_input").val(), "Lastname", 20);
+            check_max_len($("#new_email_input").val(), "Email", 40);
+
+            if( error_list.length == 0){ // no error happens, so we send the JSON
+                $.ajax({
+                    type: "POST",
+                    contentType: "application/json; charset=UTF-8",
+                    data: JSON.stringify(
+                        {   "username" : $("#new_username_input").val(), 
+                            "firstname" : $("#new_firstname_input").val(),
+                            "lastname" : $("#new_lastname_input").val(),
+                            "password1" : $("#new_password1_input").val(),
+                            "password2" : $("#new_password2_input").val(),
+                            "email" : $("#new_email_input").val()
+                        }),
+                    url: "{{url_for('user.api_user_route')}}",
+                    success: function(data) { window.location.href = "{{url_for('login.login_route')}}?url={{url_for('user.user_route')}}";},
+                    error: server_error_handler
+                
+                });
+            }else{
+                client_error_handler(error_list);
+            }
+        };
+          
+    </script>
+{% endif %}
+
+
+
+
+
+    {% if edit %}
+        <div>
+            <h4> Please edit your account below </h4>
+            <form id = "update_user">
+                firstname: <input type = "text" name = "firstname" value = "" id = "update_firstname_input">
+                <br>
+                lastname: <input type = "text" name = "lastname" value = "" id = "update_lastname_input">
+                <br>
+                password1: <input type = "password" name = "password1" value = "" id = "update_password1_input">
+                <br>
+                password2: <input type = "password" name = "password2" value = "" id = "update_password2_input">
+                <br>
+                email: <input type = "email" name = "email" value = "" id = "update_email_input">
+                <br>
+                <button id = "update_submit" onclick = "update_user(); return false;">Submit</button>
+            </form>
+        </div>
+    {% else %}
+        <div>
+            <h4> Please create your account below </h4>
+            <form id = "new_user">
+                username: <input type = "text" name = "username" value = "" id = "new_username_input">
+                <br>
+                firstname: <input type = "text" name = "firstname" value = "" id = "new_firstname_input">
+                <br>
+                lastname: <input type = "text" name = "lastname" value = "" id = "new_lastname_input">
+                <br>
+                password1: <input type = "password" name = "password1" value = "" id = "new_password1_input">
+                <br>
+                password2: <input type = "password" name = "password2" value = "" id = "new_password2_input">
+                <br>
+                email: <input type = "email" name = "email" value = "" id = "new_email_input">
+                <br>
+                <button id = "new_submit" onclick = "create_user(); return false;">Submit</button>
+            </form>
+        </div>
+    {% endif %}
+
+    <div>
+        <h4> Instructions for creating/modifying an account </h4>
+        <ul>
+            <li>no field can be left blank</li>
+            <li>username, firstname, lastname cannot take more than 20 chars</li>
+            <li>username must be unqiue</li>
+            <li>username must be at least 3 chars long</li>
+            <li>username may only contain letters, digits and underscores</li>
+            <li>password must be at least 8 chars long</li>
+            <li>password must contain at least on letter and one number</li>
+            <li>password may only contain letters, digits and underscores</li>
+            <li>two passwords must match</li>
+            <li>email address must be valid</li>
+        </ul>
+    </div>
+{% endblock %}
+

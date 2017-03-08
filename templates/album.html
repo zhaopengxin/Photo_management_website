@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script type="text/javascript">
+// URL Navigation and Histroy
+    $(document).ready(function(){
+        var parse = window.location.href.split('albumid=');
+        if (parse.length == 2){
+            //album route
+            var albumid = parse[1];
+            var page_url = window.location.href;
+            var stateObj = {stateType: "album", albumid:albumid};
+            history.replaceState(stateObj, "", page_url);
+            load_album_page(albumid);
+        }
+        else{
+            //pic route
+            parse = window.location.href.split('picid=');
+            var picid = parse[1];
+            var stateObj = {stateType : "pic", picid: picid};
+            var page_url = "/m8pl2dh7/p3/pic?picid="+picid.toString();
+            history.pushState(stateObj, "", page_url);
+            load_pic_page(picid);
+        }
+    });   
+
+    window.onpopstate = function(event) {
+        if (event.state.stateType == 'pic'){
+            load_pic_page(event.state.picid);
+        }
+        if (event.state.stateType == 'album'){
+            load_album_page(event.state.albumid);
+        }
+    };
+
+// Album Route
+    function load_album_page(albumid){
+        $('#content').empty();
+        $.ajax({
+            type : "GET",
+            url: "/m8pl2dh7/p3/api/v1/album/"+albumid.toString(),
+            success: album_info_success_handler,
+            error: server_error_handler
+        });
+    };
+
+    function album_info_success_handler(data){
+        //client-side check
+        error_list = []; 
+        var has_session = false; 
+        var owner_name = data.username; 
+        var viewer_name = "";  
+
+        if ("{{session['username']}}" != ""){
+            var user_info_display = $("<p>User signed in: " + data.username + "</p><br>");
+            $("#content").append(user_info_display);
+            has_session = true;
+            viewer_name = "{{session['username']}}";
+        }
+
+        if(has_session == true && data.access == "private" && owner_name != viewer_name){
+            error_list.push({"message" : "You do not have the necessary permissions for the resource"});
+        }
+
+        if(has_session == false && data.access == "private"){
+            error_list.push({"message" : "You do not have the necessary credentials for the resource"});
+        }
+        
+        if(error_list.length == 0){
+            // no error happens
+            var page_header = $("<p id='title'><b>Album Title:</b> " + data.title + "  <b>Album Onwer:</b> " + data.username +"</p><br>");
+            $("#content").append(page_header);
+            for (var i = 0; i < data.pics.length; ++i){    
+                var new_picid = data.pics[i].picid;
+                var new_pic_format = data.pics[i].format;
+                var new_hyperlink_id = 'pic_' + new_picid.toString() + '_link';
+                var new_modify_date = data.pics[i].date;
+                var new_caption = data.pics[i].caption;
+                var img_src = '/static/images/'+ new_picid.toString() + '.' + new_pic_format.toString();
+
+                var pic_section = $("<div></div>");
+                var pic_img = $("<a class = 'pic_link' id = " + new_hyperlink_id + "><img src = " + img_src + " height='100' width='100'></a>");
+                var pic_caption = $("<p>CAPTION: " + new_caption + "</p><br>");
+                var pic_date = $("<p>" + new_modify_date + "</p><br>");
+
+                pic_section.append(pic_img);
+                pic_section.append(pic_caption);
+                pic_section.append(pic_date);
+                $("#content").append(pic_section);
+            }
+            if (has_session == true && owner_name == viewer_name){
+                var edit_url  = "/m8pl2dh7/p3/album/edit?albumid=" + data.albumid.toString(); 
+                var edit_link = $("<a href = '" + edit_url+ "'' >[Edit Album]</a>")
+                $("#content").append(edit_link);
+            }
+            $('.pic_link').click(function(){
+                var this_picid = $(this).attr('id').split('_')[1]; 
+                create_new_pic_page(this_picid);
+            });
+        }
+        else{
+            // error happens
+            client_error_handler(error_list);
+        }
+    };
+
+
+// Pic Route
+    function create_new_pic_page(picid){
+        var state2Obj = {stateType : "pic", picid: picid};
+        var page_url = "/m8pl2dh7/p3/pic?picid="+picid.toString();
+        history.pushState(state2Obj, "", page_url);
+        load_pic_page(picid);
+    }
+
+    function load_pic_page(picid){
+        $("#content").empty();
+        $.ajax({
+            type : "GET",
+            url: "/m8pl2dh7/p3/api/v1/pic/"+picid.toString(),
+            success: pic_info_success_handler,
+            error: server_error_handler
+        });
+    };
+
+    function pic_info_success_handler(data){
+        error_list = [];
+        $.ajax({
+            type : "GET",
+            url: "/m8pl2dh7/p3/api/v1/album/"+data.albumid.toString(),
+            success: function(album_data){
+                var has_session = false; 
+                var owner_name = album_data.username; 
+                var viewer_name = "";      
+                if ("{{session['username']}}" != ""){
+                    var user_info_display = $("<p>User signed in: " + album_data.username + "</p><br>");
+                    $("#content").append(user_info_display);
+                    has_session = true;
+                    viewer_name = "{{session['username']}}";
+                }
+
+                if(has_session == true && album_data.access == "private" && owner_name != viewer_name){
+                    error_list.push({"message" : "You do not have the necessary permissions for the resource"});
+                }
+
+                if(has_session == false && album_data.access == "private"){
+                    error_list.push({"message" : "You do not have the necessary credentials for the resource"});
+                }
+
+                if(error_list.length == 0){
+                    // no error happens
+                    var img_src = '/static/images/'+ data.picid.toString() + '.' + data.format.toString();
+                    var pic_img = $("<div><img src = " + img_src +" ></div>");
+                    var caption_id = "pic_" + data.picid + "_caption";
+                    var pic_caption = $("<p id = " + caption_id + ">CAPTION: " + data.caption + "</p>");
+                    var caption_intro = $("<p>Enter new caption below: </p>");
+                    var pic_caption_update = $("<input type='text' id='pic_caption_input' value = "+ data.caption + "><br><br>");
+                    var prev_links = $("<a id='prev_pic'>PREVIOUS PICTURE</a><br>");
+                    var next_links = $("<a id='next_pic'>NEXT PICTURE</a><br>");
+                    var prev_id = data.prev;
+                    if (!prev_id){
+                        prev_id = data.picid;
+                    }
+                    var next_id = data.next;
+                    if(!next_id){
+                        next_id = data.picid;
+                    }
+                    $("#content").append(pic_img);
+                    if(has_session == true && owner_name == viewer_name){       
+                        $("#content").append(caption_intro);
+                        $("#content").append(pic_caption_update);
+                    }
+                    else{
+                        $("#content").append(pic_caption);
+                    }
+                    
+                    $("#content").append(prev_links);
+                    $("#content").append(next_links);
+
+                    $('a').click(function(){
+                        var link_id = $(this).attr('id');
+                        if(link_id == "prev_pic"){   
+                            create_new_pic_page(prev_id);
+                        }
+                        if(link_id == "next_pic"){
+                            create_new_pic_page(next_id);  
+                        }
+                    });
+
+                    $('#pic_caption_input').bind("enterKey",function(e){
+                        $.ajax({
+                            type : "PUT",
+                            contentType: "application/json; charset=UTF-8",
+                            data: JSON.stringify(
+                                {   "albumid" : data.albumid, 
+                                    "caption" : $("#pic_caption_input").val(),
+                                    "format" : data.format,
+                                    "next" : data.next,
+                                    "picid" : data.picid,
+                                    "prev" : data.prev
+                                }),
+                            url: "/m8pl2dh7/p3/api/v1/pic/"+data.picid.toString(),
+                            success: function(data){
+                                pic_caption_update.text(data.caption);
+                            },
+                            error: server_error_handler
+                        });
+                    });
+                
+                    $('#pic_caption_input').keyup(function(e){
+                        if(e.keyCode == 13)
+                        {
+                            $(this).trigger("enterKey");
+                        }
+                    });
+                }
+                else{
+                    //error happens
+                    client_error_handler(error_list);
+                }
+            },
+            error: server_error_handler
+        });
+    };
+
+</script>
+
+{% if not edit %}
+    <div id = "content"></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% else %}
+    {% if sensitive %}
+        <h3>Album[sensitive]</h3>
+        <p> Welcome to "{{album.username}}" 's album "{{album.title}}"</p>
+    {% else %}
+        <h3>Album[public]</h3>
+        <p> Welcome to "{{album.username}}" 's album "{{album.title}}"</p>
+    {% endif %}
+    {% if sensitive %}
+        <form method = "POST">
+            <input type = "radio" name = "access" value = "public" id = "album_edit_public_radio"/> Public
+            <br>
+            <input type = "radio" name = "access" value = "private" id = "album_edit_private_radio"/> Private
+            <br>
+            <input type = "hidden" name = "op" value = "access">
+            <input type = "hidden" name = "albumid" value = {{albumid}}>
+            <button type = "submit" id = "album_edit_access_submit"> Submit </button>
+        </form>
+    {% if private %}
+        <table>
+            <tr>
+                <tb>        Username          </tb><tb>           Update Access          </tb>
+            </tr>
+            <br>
+            {% for access_user in access_users %}
+            <form method = "POST">
+                <input type = "hidden" name = "op" value = "revoke">
+                <input type = "hidden" name = "albumid" value = {{albumid}}>
+                <input type = "hidden" name = "username" value = {{access_user.username}}>
+                <tr>
+                    <tb>{{access_user.username}}</tb>
+                    <tb><button type = "submit" id = "album_edit_revoke_{{access_user.username}}">[Revoke]</button></tb>
+                </tr>
+                <br>
+            </form>
+            {% endfor %}
+            <form method = "POST">
+                <input type = "hidden" name = "op" value = "grant">
+                <input type = "hidden" name = "albumid" value = {{albumid}}>
+                <tr>
+                    <tb><input type = "text" name = "username" value = "New:________" id = "album_edit_grant_input"></tb>
+                    <tb><button type = "submit" id = "album_edit_grant_submit">[Add]</button></tb>
+                </tr>
+                <br>
+            </form>
+        </table>
+    {% endif %}
+    {% endif %}
+
+    <table id = "thumb_view">
+        {% for pic in pic_infos %}
+            <tr>
+                <tb> 
+                    <a class = "no_underline" href = "{{url_for('pic.pic_route', picid = pic.picid)}}" id = "pic_{{pic.picid}}_link" >
+                        <img src= {{ url_for('static', filename = 'images/' + pic.picid + '.'  + pic.format) }} width="100" height="100">
+                    </a>
+                </tb>
+                <tb>{{pic.date}}</tb>
+                <tb>{{pic.caption}}</tb>
+                {% if edit %}
+                <tb>
+                    <form method = "POST"> 
+                        <input type = "hidden" name = "picid" value = {{pic.picid}}>
+                        <input type = "hidden" name = "op" value = "delete">
+                        <button type = "submit" id="delete_pic_{{pic.picid}}"> Delete </button>
+                    </form>
+                 </tb>
+                {% endif %}
+            </tr>
+            <br>
+        {% endfor %}
+    </table>
+
+    {% if sensitive %}
+        <form  method = "POST" enctype=multipart/form-data>
+            <input type = "file" name="file" id = "file_input"> 
+            <input type = "hidden" name = "op" value = "add"> 
+            <button type = "submit" id = "file_submit"> Add </button>
+        </form>
+    {% endif %}
+
+{% endif %}
+
+{% endblock %}
+
